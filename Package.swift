@@ -19,7 +19,7 @@ let package = Package(
             bundleIdentifier: "com.timi2506.homeKitPairingCodes",
             teamIdentifier: "P6PV2R9443",
             displayVersion: "1.0.0",
-            bundleVersion: "2",
+            bundleVersion: "3",
             appIcon: .asset("AppIcon"),
             accentColor: .presetColor(.orange),
             supportedDeviceFamilies: [

@@ -179,7 +179,6 @@ struct AddPairingCodeView: View {
             }
             .navigationTitle("Add Pairing Code")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $categorySearchText, prompt: "Search Category")
             .onChange(of: categorySearchText) { 
                 if !categorySearchText.isEmpty && !HomeKitCategory.allCases.contains(where: { $0.description == newCodeObject.category.description }){
                     if !HomeKitCategory.allCases.contains(where: { $0.description.lowercased().contains(categorySearchText) }) {
