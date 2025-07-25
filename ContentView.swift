@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State var addCode = false
+    @State var importExport = false
     @StateObject var manager = CodesManager.shared
     @State var categoryFilters: [HomeKitCategory] = []
     @State var searchText = ""
@@ -63,6 +64,12 @@ struct ContentView: View {
             .searchable(text: $searchText, prompt: Text("Search Name or Category"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Import/Export", systemImage: "cloud") {
+                        importExport.toggle()
+                    }
+                    .labelStyle(.iconOnly)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Add Code", systemImage: "plus") {
                         addCode.toggle()
                     }
@@ -74,6 +81,9 @@ struct ContentView: View {
             }
             .sheet(item: $codeToEdit) { editCode in
                 EditPairingCodeView(newCodeObject: editCode)
+            }
+            .sheet(isPresented: $importExport) {
+                ImportExportView()
             }
         }
     }
@@ -142,40 +152,47 @@ struct AddPairingCodeView: View {
                 HomeKitCategoryPickerView(selectedCategory: $newCodeObject.category, title: "Category", searchText: $categorySearchText)
                     .pickerStyle(.navigationLink)
                     .foregroundStyle(.tint)
-                Button(action: {
-                    scanCode = true
-                }) {
-                    HStack {
-                        Label("Scan", systemImage: "qrcode.viewfinder") 
-                        Spacer()
-                    }
-                }
-                .contentShape(.rect)
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 5)
-                        .onEnded({ _ in
-                            debug.toggle()
-                        })
-                )
-                .swipeActions {
-                    if debug {
-                        Button("Toggle Glass", systemImage: "drop.fill") {
-                            forceGlass.toggle()
-                            restart = true
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Button(action: {
+                            scanCode = true
+                        }) {
+                            HStack {
+                                Label("Scan", systemImage: "qrcode.viewfinder")
+                                Spacer()
+                            }
                         }
-                        .symbolVariant(forceGlass ? .slash : .none)
-                        .tint(forceGlass ? .red : .green)
+                        Text("The Scanning Feature is very experimental, has proven unreliable for now and is not recommended")
+                            .font(.caption)
+                            .foregroundStyle(.gray)
                     }
-                }
-                .alert("Restart Requires", isPresented: $restart, actions: {
-                    Button("OK") {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                            restart = true
+                    .contentShape(.rect)
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 5)
+                            .onEnded({ _ in
+                                debug.toggle()
+                            })
+                    )
+                    .swipeActions {
+                        if debug {
+                            Button("Toggle Force Glass", systemImage: "drop.fill") {
+                                forceGlass.toggle()
+                                restart = true
+                            }
+                            .symbolVariant(forceGlass ? .slash : .none)
+                            .tint(forceGlass ? .red : .green)
                         }
                     }
-                }, message: {
-                    Text("Restart this App to see the Effects apply")
-                })
+                    .alert("Restart Required", isPresented: $restart, actions: {
+                        Button("OK") {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                restart = true
+                            }
+                        }
+                    }, message: {
+                        Text("Restart this App to see the Effects apply")
+                    })
+                }
             }
             .navigationTitle("Add Pairing Code")
             .navigationBarTitleDisplayMode(.inline)
@@ -346,62 +363,62 @@ struct EditPairingCodeView: View {
 
 struct HomeKitPairingCode: Codable, Identifiable {
     var id: UUID = UUID()
-        var name: String? = nil
-        var pairingCode: String {
-            didSet {
-                pairingCode = Self.validatedPairingCode(pairingCode)
-            }
-        }
-        
-        var setupID: String {
-            didSet {
-                setupID = Self.validatedSetupID(setupID)
-            }
-        }
-        
-        var category: HomeKitCategory
-        
-        init(pairingCode: String, setupID: String, category: HomeKitCategory) {
-            self.pairingCode = Self.validatedPairingCode(pairingCode)
-            self.setupID = Self.validatedSetupID(setupID)
-            self.category = category
-        }
-        
-        /// Checks if the pairing code is valid according to HomeKit rules
-        var isValid: Bool {
-            let digitsOnly = pairingCode.filter(\.isNumber)
-            let setupIDValid = setupID.count == 4 && setupID.allSatisfy { $0.isLetter || $0.isNumber }
-            let pairingCodeValid = digitsOnly.count == 8 && UInt32(digitsOnly) != nil
-            return pairingCodeValid && setupIDValid
-        }
-        
-        /// Generate QR code image
-        func qrCode() -> UIImage? {
-            guard isValid else { return nil }
-            return generateHomeKitQRCode(pairingCode: pairingCode, setupID: setupID, category: category)
-        }
-        
-        // MARK: - Validation Helpers
-        
-        private static func validatedPairingCode(_ input: String) -> String {
-            let digits = input.filter(\.isNumber)
-            let limited = String(digits.prefix(8))
-            return formatPairingCode(limited)
-        }
-        
-        private static func validatedSetupID(_ input: String) -> String {
-            let alphanumerics = input.uppercased().filter { $0.isNumber || $0.isLetter }
-            return String(alphanumerics.prefix(4))
-        }
-        
-        private static func formatPairingCode(_ raw: String) -> String {
-            let padded = raw.padding(toLength: 8, withPad: "0", startingAt: 0)
-            let part1 = padded.prefix(3)
-            let part2 = padded.dropFirst(3).prefix(2)
-            let part3 = padded.dropFirst(5)
-            return "\(part1)-\(part2)-\(part3)"
+    var name: String? = nil
+    var pairingCode: String {
+        didSet {
+            pairingCode = Self.validatedPairingCode(pairingCode)
         }
     }
+    
+    var setupID: String {
+        didSet {
+            setupID = Self.validatedSetupID(setupID)
+        }
+    }
+    
+    var category: HomeKitCategory
+    
+    init(pairingCode: String, setupID: String, category: HomeKitCategory) {
+        self.pairingCode = Self.validatedPairingCode(pairingCode)
+        self.setupID = Self.validatedSetupID(setupID)
+        self.category = category
+    }
+    
+    /// Checks if the pairing code is valid according to HomeKit rules
+    var isValid: Bool {
+        let digitsOnly = pairingCode.filter(\.isNumber)
+        let setupIDValid = setupID.count == 4 && setupID.allSatisfy { $0.isLetter || $0.isNumber }
+        let pairingCodeValid = digitsOnly.count == 8 && UInt32(digitsOnly) != nil
+        return pairingCodeValid && setupIDValid
+    }
+    
+    /// Generate QR code image
+    func qrCode() -> UIImage? {
+        guard isValid else { return nil }
+        return generateHomeKitQRCode(pairingCode: pairingCode, setupID: setupID, category: category)
+    }
+    
+    // MARK: - Validation Helpers
+    
+    private static func validatedPairingCode(_ input: String) -> String {
+        let digits = input.filter(\.isNumber)
+        let limited = String(digits.prefix(8))
+        return formatPairingCode(limited)
+    }
+    
+    private static func validatedSetupID(_ input: String) -> String {
+        let alphanumerics = input.uppercased().filter { $0.isNumber || $0.isLetter }
+        return String(alphanumerics.prefix(4))
+    }
+    
+    private static func formatPairingCode(_ raw: String) -> String {
+        let padded = raw.padding(toLength: 8, withPad: "0", startingAt: 0)
+        let part1 = padded.prefix(3)
+        let part2 = padded.dropFirst(3).prefix(2)
+        let part3 = padded.dropFirst(5)
+        return "\(part1)-\(part2)-\(part3)"
+    }
+}
 
 class CodesManager: ObservableObject {
     init() {

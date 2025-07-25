@@ -194,16 +194,16 @@ struct HomeKitCategoryPickerView: View {
     @State var searching: Bool = false
     var body: some View {
         Picker(selection: $selectedCategory) {
-                if !(searchText.isEmpty || HomeKitCategory.allCases.contains(where: { $0.description.lowercased().contains(searchText.lowercased()) })) {
-                    ContentUnavailableView.search(text: searchText)
+            if !(searchText.isEmpty || HomeKitCategory.allCases.contains(where: { $0.description.lowercased().contains(searchText.lowercased()) })) {
+                ContentUnavailableView.search(text: searchText)
+            }
+            ForEach(HomeKitCategory.allCases.sorted(by: { $0.description < $1.description })) { category in
+                if Bool(searchText.isEmpty ? true : category.description.lowercased().contains(searchText.lowercased())) {
+                    Label(category.description, systemImage: category.symbol)
+                        .tag(category)
                 }
-                ForEach(HomeKitCategory.allCases.sorted(by: { $0.description < $1.description })) { category in
-                    if Bool(searchText.isEmpty ? true : category.description.lowercased().contains(searchText.lowercased())) {
-                        Label(category.description, systemImage: category.symbol)
-                            .tag(category)
-                    }
-                }
-           
+            }
+            
         } label: {
             if let titleSymbol {
                 Label(title, systemImage: titleSymbol)
